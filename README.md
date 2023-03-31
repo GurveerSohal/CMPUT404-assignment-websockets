@@ -59,3 +59,9 @@ Contributors
 * Mark Galloway
 * Abram Hindle
 * Cole Mackenzie
+
+References
+==========
+
+This code is modified from this tutorial, retrieved on 2023-03-31
+https://github.com/abramhindle/WebSocketsExamples

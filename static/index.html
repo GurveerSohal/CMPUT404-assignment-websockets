@@ -20,11 +20,77 @@
         See the License for the specific language governing permissions and
         limitations under the License.
     "/>
+    <style>
+        html {
+            height: 100%;
+        }
+        body {
+            background-color: aliceblue;
+            padding: 10pt;
+            height: 90%;
+        }
+
+        h1 {
+            text-align: center;
+        }
+        #menu {
+            display: flex;
+            align-items: center;
+            justify-content: space-evenly;
+            background-color: aliceblue;
+            color: black;
+            flex-basis: 1;
+        }
+
+        #c {
+            -webkit-tap-highlight-color: transparent;
+            background-color: aliceblue;
+        }
+
+        #circleshape{
+            border-radius: 50%;
+            background-color: black;
+        }
+
+        #square {
+            background: black;
+            width: 10pt;
+            height: 10pt;
+            display: inline-block;
+        }
+
+        #circle {
+            background: black;
+            border-radius: 50%;
+            width: 10pt;
+            height: 10pt;
+            display: inline-block;
+        }
+    </style>
     <script src="json2.js"></script>
   </head> 
   <body bgcolor="white" height="100%" width="100%"> 
     <div id="debug"></div>
-    <canvas id="c" width="100%" height="100%" style="-webkit-tap-highlight-color: transparent;"></canvas> 
+    <h1>Drawing with AJAX</h1>
+
+    <div id="menu">
+        <label for="colorpicker">Pick your color</label>
+        <input type="color" name="colorpicker" id="colorpicker" value="#ffffff">
+
+        <div id="shapepicker">
+            <legend>Pick your shape</legend>
+            <label for="circleshape"><div id="circle"></div></label>
+            <input type="radio" name="shape" id="circleshape" value="circle" checked>
+            <label for="squareshape"><div id="square"></div></label>
+            <input type="radio" name="shape" id="squareshape" value="square">
+        </div>
+
+        <label for="sizepicker">Enter your size</label>
+        <input type="number" name="sizepicker" id="sizepicker" value="10" max="100" min="10">
+
+        <button onclick="clearWorld()">Clear</button>
+    </div>
+    <canvas id="c""></canvas> 
 
     <script>
       // Fix me
@@ -47,15 +113,19 @@ world = {};
 //XXX: TODO Make this prettier!
 function drawCircle(context,entity) {
     with(context) {
-        beginPath();                
+        beginPath();              
         lineWidth = 3;
         var x = entity["x"];
         var y = entity["y"];
         //moveTo(x,y);
         fillStyle = entity["colour"];
         strokeStyle = fillStyle;
-        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
+        if (entity.shape === 'circle') {
+            arc(x, y, entity.size*0.5, 0, 2.0 * Math.PI, false);  
+        } else {
+            rect(x-5, y-5, entity.size, entity.size);
+        }
+        fill();                                
     }
 }
 
@@ -125,11 +195,13 @@ function addEntity(entity, data) {
     world[entity] = data;
     // drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just modified!
-    socket.send(JSON.stringify(world));
+    let message = {};
+    message[entity] = data;
+    socket.send(JSON.stringify(message));
 }
 var counter = 0;
 function addEntityWithoutName(data) {
-    var name = "X"+(counter++)%100;
+    var name = "X"+(counter++)%1000;
     addEntity(name,data);
 }
 
@@ -232,16 +304,30 @@ mouse = (function() {
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    let color = document.getElementById('colorpicker').value;
+    // https://stackoverflow.com/questions/9618504/how-to-get-the-selected-radio-button-s-value
+    let shape = document.querySelector('input[name="shape"]:checked').value;
+    let size = document.querySelector('#sizepicker').value
+    addEntityWithoutName({'x':x,'y':y,'colour':color, 'shape': shape, 'size': size});
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+    let color = document.getElementById('colorpicker').value;
+    // https://stackoverflow.com/questions/9618504/how-to-get-the-selected-radio-button-s-value
+    let shape = document.querySelector('input[name="shape"]:checked').value;
+    let size = document.querySelector('#sizepicker').value
+    addEntityWithoutName({'x':x,'y':y,'colour':color, 'shape': shape, 'size': size});
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
-                          'radius':10});
+    let color = document.getElementById('colorpicker').value;
+
+    // This code was taken from a post made by Giorgos Tsakonas on StackOverflow on Jul 22, 2014
+    // retrieved on March 10 2022
+    // https://stackoverflow.com/questions/9618504/how-to-get-the-selected-radio-button-s-value
+    let shape = document.querySelector('input[name="shape"]:checked').value;
+    let size = document.querySelector('#sizepicker').value
+    addEntityWithoutName({'x':x,'y':y,'colour':color, 'shape': shape, 'size': size});
 });
 
 
@@ -255,9 +341,21 @@ function wsSetup() {
     socket = new WebSocket(url);
     socket.onopen = function() {
         //XXX: TODO What are you going to do here?
-        // window.location.replace();
-        console.log('wtf');
-        socket.send(JSON.stringify({'hello':'mate'}));
+        const getWorld = async () => {
+            let response = await fetch(`/world`);
+            if (response.status == 200) {
+                let data = await response.json();
+                console.log(data);
+                console.log('fetched');
+
+                world = data;
+            } else {
+                console.log('There was an error getting world!');
+                world = {};
+            }
+        }
+
+        getWorld();
     };
     socket.onerror = function(msg) {
         debug("WebSocket Error:" + msg.data);

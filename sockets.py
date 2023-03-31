@@ -82,8 +82,7 @@ myWorld = World()
 
 def set_listener( entity, data ):
     ''' do something with the update ! '''
-    for key in data:
-        myWorld.update(entity, key, data[key])
+
 
 myWorld.add_set_listener( set_listener )
         
@@ -103,6 +102,10 @@ def read_ws(ws,client):
             print("WS RECV: %s" % msg)
             if (msg is not None):
                 packet = json.loads(msg)
+                for entity in packet:
+                    data = packet[entity]
+                    for key in data:
+                        myWorld.update(entity, key, data[key])
                 send_all_json( packet )
             else:
                 break
